@@ -103,6 +103,35 @@ def create_side_by_side(image, depth, grayscale):
     else:
         return np.concatenate((image, right_side), axis=1)
 
+def process_sample(index, image_name, num_images):
+    print("  Processing {} ({}/{})".format(image_name, index + 1, num_images))
+
+    # input
+    original_image_rgb = utils.read_image(image_name)  # in [0, 1]
+    image = transform({"image": original_image_rgb})["image"]
+
+    # compute
+    with torch.no_grad():
+        prediction = process(device, model, model_type, image, (net_w, net_h), original_image_rgb.shape[1::-1],
+                             optimize, False)
+
+    # output
+    if output_path is not None:
+        filename = os.path.join(
+            output_path, os.path.splitext(os.path.basename(image_name))[0] + '-' + model_type
+        )
+        if not side:
+            utils.write_depth(filename, prediction, grayscale, bits=2)
+        else:
+            original_image_bgr = np.flip(original_image_rgb, 2)
+            content = create_side_by_side(original_image_bgr*255, prediction, grayscale)
+            cv2.imwrite(filename + ".png", content)
+        utils.write_pfm(filename + ".pfm", prediction.astype(np.float32))
+
+
+def worker(args):
+    index, image_name, num_images = args
+    process_sample(index, image_name, num_images)
 
 def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", optimize=False, side=False, height=None,
         square=False, grayscale=False):
@@ -144,42 +173,11 @@ def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", op
         if output_path is None:
             print("Warning: No output path specified. Images will be processed but not shown or stored anywhere.")
 
-
-        def process_sample(index, image_name):
-            print("  Processing {} ({}/{})".format(image_name, index + 1, num_images))
-
-            # input
-            original_image_rgb = utils.read_image(image_name)  # in [0, 1]
-            image = transform({"image": original_image_rgb})["image"]
-
-            # compute
-            with torch.no_grad():
-                prediction = process(device, model, model_type, image, (net_w, net_h), original_image_rgb.shape[1::-1],
-                                     optimize, False)
-
-            # output
-            if output_path is not None:
-                filename = os.path.join(
-                    output_path, os.path.splitext(os.path.basename(image_name))[0] + '-' + model_type
-                )
-                if not side:
-                    utils.write_depth(filename, prediction, grayscale, bits=2)
-                else:
-                    original_image_bgr = np.flip(original_image_rgb, 2)
-                    content = create_side_by_side(original_image_bgr*255, prediction, grayscale)
-                    cv2.imwrite(filename + ".png", content)
-                utils.write_pfm(filename + ".pfm", prediction.astype(np.float32))
-
-
-        def worker(args):
-            index, image_name = args
-            process_sample(index, image_name)
-
         num_workers = multiprocessing.cpu_count()  # Use all available CPU cores
         print(f'using {num_workers} cores...')
             
         with multiprocessing.Pool(processes=num_workers) as pool:
-            list(tqdm(pool.imap(worker, [(index, image_name) for index, image_name in enumerate(image_names)]), total=len(image_names)))
+            list(tqdm(pool.imap(worker, [(index, image_name, num_images) for index, image_name in enumerate(image_names)]), total=len(image_names)))
 
     else:
         with torch.no_grad():
