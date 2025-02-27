@@ -7,11 +7,13 @@ import utils
 import cv2
 import argparse
 import time
+import multiprocessing
+from tqdm import tqdm
 
 import numpy as np
 
 from imutils.video import VideoStream
-from midas.model_loader import default_models, load_model
+from .midas.model_loader import default_models, load_model
 
 first_execution = True
 def process(device, model, model_type, image, input_size, target_size, optimize, use_camera):
@@ -141,8 +143,9 @@ def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", op
     if input_path is not None:
         if output_path is None:
             print("Warning: No output path specified. Images will be processed but not shown or stored anywhere.")
-        for index, image_name in enumerate(image_names):
 
+
+        def process_sample(index, image_name):
             print("  Processing {} ({}/{})".format(image_name, index + 1, num_images))
 
             # input
@@ -166,6 +169,17 @@ def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", op
                     content = create_side_by_side(original_image_bgr*255, prediction, grayscale)
                     cv2.imwrite(filename + ".png", content)
                 utils.write_pfm(filename + ".pfm", prediction.astype(np.float32))
+
+
+        def worker(args):
+            dataset_path, output_path, f = args
+            process_sample(dataset_path, output_path, f)
+
+        num_workers = multiprocessing.cpu_count()  # Use all available CPU cores
+        print(f'using {num_workers} cores...')
+            
+        with multiprocessing.Pool(processes=num_workers) as pool:
+            list(tqdm(pool.imap(worker, [(index, image_name) for index, image_name in enumerate(image_names)]), total=len(image_names)))
 
     else:
         with torch.no_grad():
