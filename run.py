@@ -172,8 +172,8 @@ def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", op
 
 
         def worker(args):
-            dataset_path, output_path, f = args
-            process_sample(dataset_path, output_path, f)
+            index, image_name = args
+            process_sample(index, image_name)
 
         num_workers = multiprocessing.cpu_count()  # Use all available CPU cores
         print(f'using {num_workers} cores...')
