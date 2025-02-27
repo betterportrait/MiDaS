@@ -104,6 +104,8 @@ def create_side_by_side(image, depth, grayscale):
         return np.concatenate((image, right_side), axis=1)
 
 def process_sample(index, image_name, num_images):
+    model, transform, net_w, net_h = load_model(device, model_path, model_type, optimize, height, square)
+
     print("  Processing {} ({}/{})".format(image_name, index + 1, num_images))
 
     # input
