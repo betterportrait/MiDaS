@@ -13,7 +13,7 @@ from tqdm import tqdm
 import numpy as np
 
 from imutils.video import VideoStream
-from .midas.model_loader import default_models, load_model
+from midas.model_loader import default_models, load_model
 
 first_execution = True
 def process(device, model, model_type, image, input_size, target_size, optimize, use_camera):
