@@ -120,18 +120,18 @@ def process_sample(index, image_name, num_images, device, model_type, optimize, 
         prediction = process(device, model, model_type, image, (net_w, net_h), original_image_rgb.shape[1::-1],
                              optimize, False)
 
-    # # output
-    # if output_path is not None:
-    #     filename = os.path.join(
-    #         output_path, os.path.splitext(os.path.basename(image_name))[0] + '-' + model_type
-    #     )
-    #     if not side:
-    #         utils.write_depth(filename, prediction, grayscale, bits=2)
-    #     else:
-    #         original_image_bgr = np.flip(original_image_rgb, 2)
-    #         content = create_side_by_side(original_image_bgr*255, prediction, grayscale)
-    #         cv2.imwrite(filename + ".png", content)
-    #     utils.write_pfm(filename + ".pfm", prediction.astype(np.float32))
+    # output
+    if output_path is not None:
+        filename = os.path.join(
+            output_path, os.path.splitext(os.path.basename(image_name))[0] + '-' + model_type
+        )
+        if not side:
+            utils.write_depth(filename, prediction, grayscale, bits=2)
+        else:
+            original_image_bgr = np.flip(original_image_rgb, 2)
+            content = create_side_by_side(original_image_bgr*255, prediction, grayscale)
+            cv2.imwrite(filename + ".png", content)
+        utils.write_pfm(filename + ".pfm", prediction.astype(np.float32))
 
 def init_worker(model_path, model_type, optimize, height, square):
     """ Initialize global model variables inside worker processes """
@@ -167,7 +167,7 @@ def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", op
 
     # get input
     if input_path is not None:
-        image_names = glob.glob(os.path.join(input_path, "*"))
+        image_names = glob.glob(os.path.join(input_path, "*.png"))
         num_images = len(image_names)
     else:
         print("No input path specified. Grabbing images from camera.")
